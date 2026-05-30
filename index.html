@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1a2e">
+<title>Vorratslager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e0d8;
+    --text: #1a1917;
+    --muted: #6b6966;
+    --accent: #2d6a4f;
+    --accent-light: #d8f3dc;
+    --accent-text: #1b4332;
+    --danger: #c0392b;
+    --danger-light: #fde8e6;
+    --danger-text: #7b1a13;
+    --warn: #d68910;
+    --warn-light: #fef3cd;
+    --warn-text: #7d5a00;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* Layout */
+  #app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .topbar-title { font-size: 17px; font-weight: 600; }
+  .topbar-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .page { flex: 1; padding: 16px; display: none; }
+  .page.active { display: block; }
+  .navbar { background: var(--surface); border-top: 1px solid var(--border); display: flex; padding: 8px 0 12px; position: sticky; bottom: 0; z-index: 10; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px; color: var(--muted); font-size: 10px; font-weight: 500; border: none; background: none; }
+  .nav-item.active { color: var(--accent); }
+  .nav-item svg { width: 22px; height: 22px; }
+
+  /* Cards & Lists */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .section-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin: 8px 0 6px; }
+
+  /* Stats row */
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 10px; text-align: center; }
+  .stat-num { font-size: 22px; font-weight: 600; font-family: 'DM Mono', monospace; }
+  .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 500; }
+
+  /* Stock list */
+  .stock-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 6px; cursor: pointer; transition: background .15s; }
+  .stock-item:hover { background: var(--surface2); }
+  .stock-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .stock-name { font-size: 14px; font-weight: 500; }
+  .stock-qty { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .stock-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .stock-num { font-size: 18px; font-weight: 600; font-family: 'DM Mono', monospace; }
+  .badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; }
+  .badge-ok { background: var(--accent-light); color: var(--accent-text); }
+  .badge-warn { background: var(--warn-light); color: var(--warn-text); }
+  .badge-low { background: var(--danger-light); color: var(--danger-text); }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; font-family: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); transition: background .15s; }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: #245c41; }
+  .btn-danger { background: var(--danger-light); color: var(--danger-text); border-color: #f5c6c2; }
+  .btn-danger:hover { background: #f9d1ce; }
+  .btn-full { width: 100%; }
+  .btn-sm { padding: 7px 12px; font-size: 12px; }
+
+  /* Form elements */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 14px; background: var(--surface); color: var(--text); outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,106,79,.12); }
+
+  /* Qty stepper */
+  .qty-row { display: flex; align-items: center; gap: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; width: fit-content; }
+  .qty-btn { width: 42px; height: 42px; background: var(--surface2); border: none; font-size: 20px; cursor: pointer; color: var(--text); font-family: inherit; display: flex; align-items: center; justify-content: center; }
+  .qty-btn:hover { background: var(--border); }
+  .qty-val { width: 60px; text-align: center; font-size: 18px; font-weight: 600; font-family: 'DM Mono', monospace; border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0; height: 42px; background: var(--surface); outline: none; }
+
+  /* Action buttons row */
+  .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0; }
+  .action-card { padding: 16px 12px; border-radius: var(--radius); border: 2px solid transparent; text-align: center; cursor: pointer; transition: all .15s; }
+  .action-card.entn { background: var(--danger-light); border-color: #f5c6c2; color: var(--danger-text); }
+  .action-card.einl { background: var(--accent-light); border-color: #b7e4c7; color: var(--accent-text); }
+  .action-card.selected { transform: scale(1.03); box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+  .action-card-icon { font-size: 24px; margin-bottom: 4px; }
+  .action-card-label { font-size: 13px; font-weight: 600; }
+
+  /* History */
+  .hist-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-date { color: var(--muted); font-size: 11px; min-width: 48px; font-family: 'DM Mono', monospace; }
+  .hist-name { flex: 1; font-weight: 500; }
+  .hist-qty { font-family: 'DM Mono', monospace; font-weight: 600; font-size: 13px; }
+  .hist-pos { color: var(--accent); }
+  .hist-neg { color: var(--danger); }
+
+  /* Scanner */
+  #video-container { position: relative; background: #000; border-radius: var(--radius); overflow: hidden; aspect-ratio: 1; width: 100%; margin-bottom: 12px; }
+  #scanner-video { width: 100%; height: 100%; object-fit: cover; }
+  .scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .scan-frame { width: 60%; aspect-ratio: 1; border: 2px solid rgba(255,255,255,.7); border-radius: 12px; }
+  .scan-corner { position: absolute; width: 20px; height: 20px; border-color: var(--accent); border-style: solid; }
+  .scan-corner.tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .scan-corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .scan-corner.bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .scan-corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  /* QR Code display */
+  .qr-wrap { background: #fff; border-radius: var(--radius-sm); padding: 12px; display: inline-block; border: 1px solid var(--border); }
+
+  /* Modal */
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; align-items: flex-end; justify-content: center; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 13px; opacity: 0; transition: all .3s; z-index: 200; pointer-events: none; white-space: nowrap; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Shopping list */
+  .shop-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 6px; }
+  .shop-cb { width: 20px; height: 20px; border-radius: 5px; border: 2px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
+  .shop-cb.checked { background: var(--accent); border-color: var(--accent); }
+  .shop-name { flex: 1; font-size: 14px; font-weight: 500; }
+  .shop-name.done { text-decoration: line-through; color: var(--muted); }
+  .shop-hint { font-size: 11px; color: var(--muted); }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-icon { font-size: 40px; margin-bottom: 10px; }
+  .empty-text { font-size: 15px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="page-title">Vorratslager</div>
+      <div class="topbar-sub" id="page-sub">Übersicht</div>
+    </div>
+    <button class="btn btn-sm" onclick="openAddItem()" id="add-btn">+ Artikel</button>
+  </div>
+
+  <!-- Page: Dashboard -->
+  <div class="page active" id="page-dashboard">
+    <div class="stats-row" id="stats-row"></div>
+    <div class="section-label">Alle Artikel</div>
+    <div id="stock-list"></div>
+  </div>
+
+  <!-- Page: Scanner -->
+  <div class="page" id="page-scanner">
+    <div class="section-label">QR-Code scannen</div>
+    <div id="video-container">
+      <video id="scanner-video" playsinline autoplay muted></video>
+      <div class="scan-overlay">
+        <div style="position:relative;width:60%;aspect-ratio:1">
+          <div class="scan-corner tl"></div>
+          <div class="scan-corner tr"></div>
+          <div class="scan-corner bl"></div>
+          <div class="scan-corner br"></div>
+        </div>
+      </div>
+    </div>
+    <div id="scan-hint" style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px">Kamera auf QR-Code richten</div>
+    <div id="scan-result" style="display:none"></div>
+  </div>
+
+  <!-- Page: Shopping List -->
+  <div class="page" id="page-shop">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="section-label" style="margin:0">Einkaufsliste</div>
+      <button class="btn btn-sm" onclick="clearChecked()">Erledigtes löschen</button>
+    </div>
+    <div id="shop-list"></div>
+    <div style="margin-top:16px">
+      <button class="btn btn-full" onclick="copyShopList()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Liste kopieren
+      </button>
+    </div>
+  </div>
+
+  <!-- Page: History -->
+  <div class="page" id="page-history">
+    <div class="section-label">Letzte Bewegungen</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div id="hist-list"></div>
+    </div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Übersicht
+    </button>
+    <button class="nav-item" onclick="showPage('scanner')" id="nav-scanner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><path d="M15 15h2v2h-2zm4 0h2v2h-2zm-4 4h2v2h-2zm4-4v6h2v-6z"/></svg>
+      Scannen
+    </button>
+    <button class="nav-item" onclick="showPage('shop')" id="nav-shop">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      Einkauf
+    </button>
+    <button class="nav-item" onclick="showPage('history')" id="nav-history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Historie
+    </button>
+  </nav>
+</div>
+
+<!-- Modal: Buchen nach Scan -->
+<div class="modal-backdrop" id="modal-book">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="book-title">Artikel buchen</div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:2px">Fach</div>
+      <div style="font-size:16px;font-weight:600" id="book-article">—</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px">Aktueller Bestand: <span id="book-current" style="font-weight:600;color:var(--text)">0</span> <span id="book-unit"></span></div>
+    </div>
+    <div class="action-row">
+      <div class="action-card entn" onclick="selectAction('entn')" id="act-entn">
+        <div class="action-card-icon">−</div>
+        <div class="action-card-label">Entnahme</div>
+      </div>
+      <div class="action-card einl" onclick="selectAction('einl')" id="act-einl">
+        <div class="action-card-icon">+</div>
+        <div class="action-card-label">Einlagerung</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Menge</label>
+      <div class="qty-row">
+        <button class="qty-btn" onclick="adjustQty(-1)">−</button>
+        <input type="number" class="qty-val" id="book-qty" value="1" min="1">
+        <button class="qty-btn" onclick="adjustQty(1)">+</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+      <button class="btn" onclick="closeModal('modal-book')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="confirmBook()">Buchen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Artikel hinzufügen -->
+<div class="modal-backdrop" id="modal-add">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Neuer Artikel</div>
+    <div class="field"><label>Artikelname</label><input type="text" id="add-name" placeholder="z.B. Mehl"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="field"><label>Einheit</label>
+        <select id="add-unit">
+          <option>Packung(en)</option><option>Flasche(n)</option><option>Rolle(n)</option>
+          <option>Dose(n)</option><option>kg</option><option>Liter</option><option>Stück</option>
+        </select>
+      </div>
+      <div class="field"><label>Emoji</label><input type="text" id="add-emoji" placeholder="🥫" maxlength="2"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="field"><label>Anfangsbestand</label><input type="number" id="add-qty" value="0" min="0"></div>
+      <div class="field"><label>Mindestbestand</label><input type="number" id="add-min" value="2" min="0"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+      <button class="btn" onclick="closeModal('modal-add')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveNewItem()">Hinzufügen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Artikel-Detail -->
+<div class="modal-backdrop" id="modal-detail">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="modal-title" style="margin:0" id="detail-title">Detail</div>
+      <button class="btn btn-sm btn-danger" onclick="deleteItem()">Löschen</button>
+    </div>
+    <div id="detail-qr" style="text-align:center;margin-bottom:16px"></div>
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:16px">Diesen QR-Code ausdrucken und ans Fach kleben</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="field"><label>Mindestbestand</label><input type="number" id="detail-min" min="0"></div>
+      <div class="field"><label>Einheit</label><input type="text" id="detail-unit"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+      <button class="btn" onclick="closeModal('modal-detail')">Schließen</button>
+      <button class="btn btn-primary" onclick="saveDetail()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+const DB_KEY = 'vorratslager_v1';
+
+function loadDB() {
+  try { return JSON.parse(localStorage.getItem(DB_KEY)) || { items: [], movements: [], shop: [] }; }
+  catch(e) { return { items: [], movements: [], shop: [] }; }
+}
+function saveDB(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+let db = loadDB();
+if (!db.items.length) {
+  const defaults = [
+    {id:genId(),name:'Mehl',emoji:'🌾',unit:'Packung(en)',qty:10,min:3},
+    {id:genId(),name:'Nudeln',emoji:'🍝',unit:'Packung(en)',qty:8,min:3},
+    {id:genId(),name:'Reis',emoji:'🍚',unit:'Packung(en)',qty:4,min:2},
+    {id:genId(),name:'Speiseöl',emoji:'🫙',unit:'Flasche(n)',qty:3,min:2},
+    {id:genId(),name:'Klopapier',emoji:'🧻',unit:'Rolle(n)',qty:20,min:6},
+    {id:genId(),name:'Waschmittel',emoji:'🧴',unit:'Packung(en)',qty:2,min:1},
+    {id:genId(),name:'Spülmaschinentabs',emoji:'✨',unit:'Stück',qty:40,min:10},
+    {id:genId(),name:'Müllbeutel',emoji:'🗑️',unit:'Rolle(n)',qty:3,min:2},
+  ];
+  db.items = defaults;
+  saveDB(db);
+}
+
+let currentPage = 'dashboard';
+let scanStream = null;
+let scanInterval = null;
+let bookItemId = null;
+let bookAction = 'einl';
+let detailItemId = null;
+
+function showPage(p) {
+  if (currentPage === 'scanner' && p !== 'scanner') stopScanner();
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  document.getElementById('nav-' + p).classList.add('active');
+  currentPage = p;
+  const titles = {dashboard:'Vorratslager',scanner:'QR-Scanner',shop:'Einkaufsliste',history:'Historie'};
+  const subs = {dashboard:'Bestandsübersicht',scanner:'Artikel buchen',shop:'Automatisch aus Bestand',history:'Alle Buchungen'};
+  document.getElementById('page-title').textContent = titles[p];
+  document.getElementById('page-sub').textContent = subs[p];
+  document.getElementById('add-btn').style.display = p === 'dashboard' ? '' : 'none';
+  if (p === 'dashboard') renderDashboard();
+  if (p === 'scanner') startScanner();
+  if (p === 'shop') renderShop();
+  if (p === 'history') renderHistory();
+}
+
+function getStatus(item) {
+  if (item.qty <= 0) return 'low';
+  if (item.qty <= item.min) return 'warn';
+  return 'ok';
+}
+
+function renderDashboard() {
+  db = loadDB();
+  const low = db.items.filter(i => getStatus(i) === 'low').length;
+  const warn = db.items.filter(i => getStatus(i) === 'warn').length;
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-box"><div class="stat-num">${db.items.length}</div><div class="stat-lbl">Artikel</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--warn)">${warn}</div><div class="stat-lbl">Niedrig</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--danger)">${low}</div><div class="stat-lbl">Leer</div></div>
+  `;
+  const sorted = [...db.items].sort((a,b) => {
+    const s = {low:0,warn:1,ok:2};
+    return s[getStatus(a)] - s[getStatus(b)];
+  });
+  document.getElementById('stock-list').innerHTML = sorted.map(item => {
+    const st = getStatus(item);
+    const badge = st==='ok' ? `<span class="badge badge-ok">OK</span>` : st==='warn' ? `<span class="badge badge-warn">Niedrig</span>` : `<span class="badge badge-low">Leer</span>`;
+    return `<div class="stock-item" onclick="openDetail('${item.id}')">
+      <div class="stock-icon">${item.emoji||'📦'}</div>
+      <div>
+        <div class="stock-name">${item.name}</div>
+        <div class="stock-qty">Min: ${item.min} ${item.unit}</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-num">${item.qty}</div>
+        ${badge}
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">Noch keine Artikel. Füge deinen ersten Artikel hinzu!</div></div>';
+}
+
+function renderShop() {
+  db = loadDB();
+  const low = db.items.filter(i => getStatus(i) !== 'ok');
+  const el = document.getElementById('shop-list');
+  if (!low.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">Alles gut bevorratet!</div></div>';
+    return;
+  }
+  el.innerHTML = low.map(item => {
+    const checked = db.shop && db.shop.includes(item.id);
+    return `<div class="shop-item">
+      <div class="shop-cb ${checked?'checked':''}" onclick="toggleShop('${item.id}')" id="scb-${item.id}">
+        ${checked ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+      </div>
+      <div>
+        <div class="shop-name ${checked?'done':''}" id="sname-${item.id}">${item.emoji||'📦'} ${item.name}</div>
+        <div class="shop-hint">Bestand: ${item.qty} | Mind.: ${item.min} ${item.unit}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleShop(id) {
+  if (!db.shop) db.shop = [];
+  const idx = db.shop.indexOf(id);
+  if (idx >= 0) db.shop.splice(idx, 1); else db.shop.push(id);
+  saveDB(db);
+  renderShop();
+}
+
+function clearChecked() {
+  db.shop = [];
+  saveDB(db);
+  renderShop();
+  toast('Erledigte Einträge entfernt');
+}
+
+function copyShopList() {
+  db = loadDB();
+  const low = db.items.filter(i => getStatus(i) !== 'ok');
+  if (!low.length) { toast('Liste ist leer'); return; }
+  const text = 'Einkaufsliste:\n' + low.map(i => `• ${i.name} (mind. ${i.min} ${i.unit})`).join('\n');
+  navigator.clipboard.writeText(text).then(() => toast('Liste kopiert!')).catch(() => toast('Kopieren fehlgeschlagen'));
+}
+
+function renderHistory() {
+  db = loadDB();
+  const el = document.getElementById('hist-list');
+  if (!db.movements || !db.movements.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-icon">📋</div><div class="empty-text">Noch keine Buchungen</div></div>';
+    return;
+  }
+  const recent = [...db.movements].reverse().slice(0, 50);
+  el.innerHTML = recent.map(m => {
+    const d = new Date(m.ts);
+    const ds = d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
+    const pos = m.type === 'einl';
+    return `<div class="hist-row">
+      <span class="hist-date">${ds}</span>
+      <span class="hist-name">${m.emoji||'📦'} ${m.name}</span>
+      <span class="hist-qty ${pos?'hist-pos':'hist-neg'}">${pos?'+':'−'}${m.qty}</span>
+    </div>`;
+  }).join('');
+}
+
+function openAddItem() {
+  document.getElementById('add-name').value = '';
+  document.getElementById('add-qty').value = '0';
+  document.getElementById('add-min').value = '2';
+  document.getElementById('add-emoji').value = '';
+  openModal('modal-add');
+  setTimeout(() => document.getElementById('add-name').focus(), 300);
+}
+
+function saveNewItem() {
+  const name = document.getElementById('add-name').value.trim();
+  if (!name) { toast('Bitte Namen eingeben'); return; }
+  const item = {
+    id: genId(),
+    name,
+    emoji: document.getElementById('add-emoji').value.trim() || '📦',
+    unit: document.getElementById('add-unit').value,
+    qty: parseInt(document.getElementById('add-qty').value)||0,
+    min: parseInt(document.getElementById('add-min').value)||2,
+  };
+  db.items.push(item);
+  saveDB(db);
+  closeModal('modal-add');
+  renderDashboard();
+  toast(`${item.name} hinzugefügt`);
+}
+
+function openDetail(id) {
+  db = loadDB();
+  const item = db.items.find(i => i.id === id);
+  if (!item) return;
+  detailItemId = id;
+  document.getElementById('detail-title').textContent = `${item.emoji||'📦'} ${item.name}`;
+  document.getElementById('detail-min').value = item.min;
+  document.getElementById('detail-unit').value = item.unit;
+  const qrEl = document.getElementById('detail-qr');
+  qrEl.innerHTML = '';
+  generateQR(item.id, item.name, qrEl);
+  openModal('modal-detail');
+}
+
+function saveDetail() {
+  db = loadDB();
+  const item = db.items.find(i => i.id === detailItemId);
+  if (!item) return;
+  item.min = parseInt(document.getElementById('detail-min').value)||0;
+  item.unit = document.getElementById('detail-unit').value;
+  saveDB(db);
+  closeModal('modal-detail');
+  renderDashboard();
+  toast('Gespeichert');
+}
+
+function deleteItem() {
+  if (!confirm('Artikel wirklich löschen?')) return;
+  db.items = db.items.filter(i => i.id !== detailItemId);
+  saveDB(db);
+  closeModal('modal-detail');
+  renderDashboard();
+  toast('Artikel gelöscht');
+}
+
+function openBookModal(itemId) {
+  db = loadDB();
+  const item = db.items.find(i => i.id === itemId);
+  if (!item) return;
+  bookItemId = itemId;
+  bookAction = 'einl';
+  document.getElementById('book-title').textContent = 'Artikel buchen';
+  document.getElementById('book-article').textContent = `${item.emoji||'📦'} ${item.name}`;
+  document.getElementById('book-current').textContent = item.qty;
+  document.getElementById('book-unit').textContent = item.unit;
+  document.getElementById('book-qty').value = 1;
+  document.getElementById('act-entn').classList.remove('selected');
+  document.getElementById('act-einl').classList.remove('selected');
+  openModal('modal-book');
+}
+
+function selectAction(a) {
+  bookAction = a;
+  document.getElementById('act-entn').classList.toggle('selected', a==='entn');
+  document.getElementById('act-einl').classList.toggle('selected', a==='einl');
+}
+
+function adjustQty(d) {
+  const el = document.getElementById('book-qty');
+  el.value = Math.max(1, (parseInt(el.value)||1) + d);
+}
+
+function confirmBook() {
+  db = loadDB();
+  const item = db.items.find(i => i.id === bookItemId);
+  if (!item) return;
+  const qty = parseInt(document.getElementById('book-qty').value)||1;
+  if (bookAction === 'entn') {
+    if (qty > item.qty) { toast('Nicht genug auf Lager!'); return; }
+    item.qty -= qty;
+  } else {
+    item.qty += qty;
+  }
+  if (!db.movements) db.movements = [];
+  db.movements.push({id:genId(), itemId:item.id, name:item.name, emoji:item.emoji||'📦', type:bookAction, qty, ts:Date.now()});
+  saveDB(db);
+  closeModal('modal-book');
+  const action = bookAction==='entn' ? 'entnommen' : 'eingelagert';
+  toast(`${qty} ${item.unit} ${action}`);
+  if (currentPage === 'dashboard') renderDashboard();
+  if (currentPage === 'history') renderHistory();
+}
+
+async function startScanner() {
+  const video = document.getElementById('scanner-video');
+  document.getElementById('scan-result').style.display = 'none';
+  document.getElementById('scan-hint').textContent = 'Kamera wird gestartet…';
+  document.getElementById('scan-hint').style.display = 'block';
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = scanStream;
+    await video.play();
+    document.getElementById('scan-hint').textContent = 'QR-Code in den Rahmen halten';
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    let lastScan = 0;
+    scanInterval = setInterval(() => {
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+      const now = Date.now();
+      if (now - lastScan < 200) return;
+      lastScan = now;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+      if (code && code.data) handleScan(code.data);
+    }, 200);
+  } catch(e) {
+    document.getElementById('scan-hint').textContent = 'Kamera nicht verfügbar. Bitte Kamera-Zugriff in den Browser-Einstellungen erlauben und Seite neu laden.';
+  }
+}
+
+function stopScanner() {
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+}
+
+function handleScan(data) {
+  if (!data.startsWith('VL:')) return;
+  const itemId = data.slice(3);
+  db = loadDB();
+  const item = db.items.find(i => i.id === itemId);
+  if (!item) { toast('Unbekannter QR-Code'); return; }
+  stopScanner();
+  const el = document.getElementById('scan-result');
+  el.style.display = 'block';
+  document.getElementById('scan-hint').style.display = 'none';
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:36px">${item.emoji||'📦'}</div>
+        <div>
+          <div style="font-size:16px;font-weight:600">${item.name}</div>
+          <div style="font-size:13px;color:var(--muted)">Bestand: <strong style="color:var(--text)">${item.qty} ${item.unit}</strong></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <button class="btn" onclick="openBookModal('${item.id}');document.getElementById('scan-result').style.display='none';document.getElementById('scan-hint').style.display='block'">Buchen</button>
+      <button class="btn" onclick="resetScanner()">Neu scannen</button>
+    </div>
+  `;
+}
+
+function resetScanner() {
+  document.getElementById('scan-result').style.display = 'none';
+  document.getElementById('scan-hint').style.display = 'block';
+  startScanner();
+}
+
+function generateQR(itemId, name, container) {
+  const data = 'VL:' + itemId;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'qr-wrap';
+  wrap.style.display = 'inline-block';
+  container.appendChild(wrap);
+
+  new QRCode(wrap, {
+    text: data,
+    width: 180,
+    height: 180,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  const label = document.createElement('div');
+  label.style.cssText = 'font-size:11px;color:var(--muted);margin-top:8px;text-align:center';
+  label.textContent = name;
+  container.appendChild(label);
+
+  setTimeout(() => {
+    const canvas = wrap.querySelector('canvas') || wrap.querySelector('img');
+    if (!canvas) return;
+    canvas.style.cursor = 'pointer';
+    canvas.title = 'Tippen zum Herunterladen';
+    canvas.onclick = () => {
+      const c = wrap.querySelector('canvas');
+      if (c) {
+        const a = document.createElement('a');
+        a.download = `qr-${name}.png`;
+        a.href = c.toDataURL();
+        a.click();
+      }
+    };
+  }, 300);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-backdrop').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+renderDashboard();
+</script>
+</body>
+</html>
